@@ -1,6 +1,5 @@
 use std::cmp::Reverse;
-use std::collections::BinaryHeap;
-use std::str::FromStr;
+use std::collections::{BinaryHeap, HashMap};
 
 use itertools::Itertools;
 use nom::IResult;
@@ -10,6 +9,7 @@ pub struct Pair(u64, u64);
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Puzzle(Vec<Pair>);
+
 
 impl Puzzle {
     pub fn into_ord_pairs(self) -> impl Iterator<Item = (u64, u64)> {
@@ -23,6 +23,17 @@ impl Puzzle {
         let it1 = std::iter::from_fn(move || h1.pop().map(|x| x.0));
         let it2 = std::iter::from_fn(move || h2.pop().map(|x| x.0));
         std::iter::zip(it1, it2)
+    }
+
+    pub fn part2(self) -> u64 {
+        let (left, mut right): (Vec<_>, Vec<_>) = self.0.into_iter().map(|x| (x.0, x.1)).unzip();
+        right.sort_unstable();
+        let haystack = right.into_iter()
+            .dedup_with_count()
+            .map(|(count, value)| (value, count as u64))
+            .collect::<HashMap<u64, u64>>();
+        
+        left.into_iter().map(|x| x * haystack.get(&x).unwrap_or(&0)).sum()
     }
 
     pub fn part1(self) -> u64 {
@@ -46,6 +57,12 @@ mod tests {
     fn test_part1() {
         assert_eq!(11, Puzzle::new_test().part1());
         assert_eq!(2756096, Puzzle::new_puzzle().part1());
+    }
+
+    #[test]
+    fn test_part2() {
+        assert_eq!(31, Puzzle::new_test().part2());
+        assert_eq!(23117829, Puzzle::new_puzzle().part2());
     }
 }
 
