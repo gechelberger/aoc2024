@@ -1,13 +1,13 @@
 use itertools::Itertools;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Report(Vec<i64>);
+pub struct Report(Vec<i32>);
 
 impl Report {
     pub fn is_safe(&self) -> bool {
-        let mut deltas = self.0.iter().tuple_windows().map(|(a, b)| b - a);
-        let small_delta = deltas.clone().map(i64::abs).all(|x| x >= 1 && x <= 3);
-        small_delta && (deltas.clone().all(|x| x > 0) || deltas.all(|x| x < 0))
+        const X: std::ops::Range<i32> = 1..4;
+        self.0.is_sorted_by(|a, b| X.contains(&(a - b)))
+            || self.0.is_sorted_by(|a, b| X.contains(&(b - a)))
     }
 
     pub fn is_safe_pt2(&self) -> bool {
@@ -48,7 +48,7 @@ mod input {
     impl Report {
         pub fn parse(input: &str) -> IResult<&str, Self> {
             map(
-                separated_list1(space1, map_res(digit1, str::parse::<i64>)),
+                separated_list1(space1, map_res(digit1, str::parse::<i32>)),
                 Self,
             )(input)
         }
