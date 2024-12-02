@@ -10,7 +10,6 @@ pub struct Pair(u64, u64);
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Puzzle(Vec<Pair>);
 
-
 impl Puzzle {
     pub fn into_ord_pairs(self) -> impl Iterator<Item = (u64, u64)> {
         let mut h1 = BinaryHeap::<Reverse<u64>>::new();
@@ -26,14 +25,12 @@ impl Puzzle {
     }
 
     pub fn part2(self) -> u64 {
-        let (left, mut right): (Vec<_>, Vec<_>) = self.0.into_iter().map(|x| (x.0, x.1)).unzip();
-        right.sort_unstable();
-        let haystack = right.into_iter()
-            .dedup_with_count()
-            .map(|(count, value)| (value, count as u64))
-            .collect::<HashMap<u64, u64>>();
-        
-        left.into_iter().map(|x| x * haystack.get(&x).unwrap_or(&0)).sum()
+        let (left, right): (Vec<_>, Vec<_>) = self.0.into_iter().map(|x| (x.0, x.1)).unzip();
+        let haystack = right.into_iter().counts();
+
+        left.into_iter()
+            .map(|x| x * (*haystack.get(&x).unwrap_or(&0) as u64))
+            .sum()
     }
 
     pub fn part1(self) -> u64 {
