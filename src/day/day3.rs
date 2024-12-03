@@ -1,18 +1,15 @@
-
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     Mul(i64, i64),
     Do,
-    Dont
+    Dont,
 }
 
 impl Instruction {
-
     pub fn exec(&self) -> i64 {
         match self {
             Self::Mul(lhs, rhs) => lhs * rhs,
-            _ => 0
+            _ => 0,
         }
     }
 }
@@ -21,50 +18,56 @@ impl Instruction {
 pub struct Puzzle(Vec<Instruction>);
 
 impl Puzzle {
-
     fn solve_pt1(&self) -> i64 {
         self.0.iter().map(Instruction::exec).sum()
     }
 
     fn solve_pt2(&self) -> i64 {
-        println!("{:?}", self);
-        let mut total = 0i64;
-        let mut exec_enabled = true;
-        for inst in &self.0 {
-            match inst {
-                Instruction::Do => exec_enabled = true,
-                Instruction::Dont => exec_enabled = false,
-                Instruction::Mul(_, _) => total = match exec_enabled {
-                    true => total + inst.exec(),
-                    false => total 
+        
+        struct State(bool, i64);
+
+        impl State {
+            fn set_enabled(mut self, enabled: bool) -> Self {
+                self.0 = enabled;
+                self
+
+            }
+
+            fn incr(mut self, amount: i64) -> Self {
+                if self.0 {
+                    self.1 += amount;
                 }
+                self
             }
         }
-        total
+
+        let mut state = State(true, 0);
+        for inst in &self.0 {
+            state = match inst {
+                Instruction::Do => state.set_enabled(true),
+                Instruction::Dont => state.set_enabled(false),
+                Instruction::Mul(lhs, rhs) => state.incr(lhs * rhs)
+            }
+        }
+        state.1
     }
 }
 
-// struct Executor<I> 
-// where 
-//     I: IntoIterator<Item=Instruction>
-// {
-//     enabled: bool,
-//     instructions: I
-// }
-
-
-
 mod input {
-    use super::*;
+    use nom::IResult;
+    use nom::branch::alt;
+    use nom::bytes::complete::tag;
+    use nom::character::complete::digit1;
+    use nom::combinator::{map, map_res};
+    use nom::sequence::{delimited, preceded, separated_pair};
 
-    use nom::{branch::alt, bytes::complete::tag, character::complete::digit1, combinator::{map, map_res}, sequence::{delimited, pair, preceded, separated_pair}, IResult};
+    use super::*;
 
     const INPUT: &'static str = include_str!("../../puzzles/day3.txt");
     const TEST_INPUT: &'static str = include_str!("../../puzzles/day3_test.txt");
     const TEST_INPUT2: &'static str = include_str!("../../puzzles/day3_test_pt2.txt");
 
     impl Puzzle {
-
         pub fn new() -> Self {
             Self::parse(INPUT)
         }
@@ -84,17 +87,15 @@ mod input {
                     Ok((tail, inst)) => {
                         instructions.push(inst);
                         tail
-                    },
+                    }
                     Err(_) => &input[1..],
                 }
             }
             Self(instructions)
         }
-
     }
 
     impl Instruction {
-
         pub fn parse(input: &str) -> IResult<&str, Self> {
             alt((
                 map(
@@ -103,17 +104,17 @@ mod input {
                         delimited(
                             tag("("),
                             separated_pair(
-                                map_res(digit1, str::parse::<i64>), 
+                                map_res(digit1, str::parse::<i64>),
                                 tag(","),
-                                map_res(digit1, str::parse::<i64>)
+                                map_res(digit1, str::parse::<i64>),
                             ),
-                            tag(")")
-                        )
+                            tag(")"),
+                        ),
                     ),
-                    |(a, b)| Self::Mul(a, b)
+                    |(a, b)| Self::Mul(a, b),
                 ),
                 map(tag("do()"), |_| Self::Do),
-                map(tag("don't()"), |_| Self::Dont)
+                map(tag("don't()"), |_| Self::Dont),
             ))(input)
         }
     }
