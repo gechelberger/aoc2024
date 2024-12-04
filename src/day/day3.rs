@@ -23,14 +23,12 @@ impl Puzzle {
     }
 
     fn solve_pt2(&self) -> i64 {
-        
         struct State(bool, i64);
 
         impl State {
             fn set_enabled(mut self, enabled: bool) -> Self {
                 self.0 = enabled;
                 self
-
             }
 
             fn incr(mut self, amount: i64) -> Self {
@@ -46,7 +44,7 @@ impl Puzzle {
             state = match inst {
                 Instruction::Do => state.set_enabled(true),
                 Instruction::Dont => state.set_enabled(false),
-                Instruction::Mul(lhs, rhs) => state.incr(lhs * rhs)
+                Instruction::Mul(lhs, rhs) => state.incr(lhs * rhs),
             }
         }
         state.1
