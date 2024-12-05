@@ -1,4 +1,5 @@
-use std::{collections::VecDeque, ops::Not};
+use std::collections::VecDeque;
+use std::ops::Not;
 
 type PageOrder = (u32, u32);
 type Booklet = Vec<u32>;
@@ -9,15 +10,13 @@ struct Puzzle {
 }
 
 impl Puzzle {
-
-    fn booklet_rules(&self, booklet: &[u32]) -> impl Iterator<Item=&(u32, u32)> {
-        self.order_rules.iter()
-            .filter(|(a, b)| {
-                booklet.contains(a) && booklet.contains(b)
-            })
+    fn booklet_rules(&self, booklet: &[u32]) -> impl Iterator<Item = &(u32, u32)> {
+        self.order_rules
+            .iter()
+            .filter(|(a, b)| booklet.contains(a) && booklet.contains(b))
     }
 
-    fn check_booklet(&self, booklet: &[u32]) -> bool {        
+    fn check_booklet(&self, booklet: &[u32]) -> bool {
         self.booklet_rules(booklet)
             .into_iter()
             .all(|(before, after)| {
@@ -27,20 +26,23 @@ impl Puzzle {
             })
     }
 
-    fn valid_booklets(&self) -> impl Iterator<Item=&[u32]> {
-        self.booklets.iter()
+    fn valid_booklets(&self) -> impl Iterator<Item = &[u32]> {
+        self.booklets
+            .iter()
             .map(|b| b.as_ref())
             .filter(|booklet| self.check_booklet(booklet))
     }
 
-    fn invalid_booklets(&self) -> impl Iterator<Item=&[u32]> {
-        self.booklets.iter()
+    fn invalid_booklets(&self) -> impl Iterator<Item = &[u32]> {
+        self.booklets
+            .iter()
             .map(|b| b.as_ref())
             .filter(|booklet| self.check_booklet(booklet).not())
     }
 
     fn partition_booklets(&self) -> (Vec<&[u32]>, Vec<&[u32]>) {
-        self.booklets.iter()
+        self.booklets
+            .iter()
             .map(|b| b.as_ref())
             .partition(|b| self.check_booklet(b))
     }
@@ -51,7 +53,7 @@ impl Puzzle {
 
     pub fn reorder_booklet(&self, booklet: &[u32]) -> Vec<u32> {
         let rules: Vec<_> = self.booklet_rules(booklet).collect();
-        let valid = |a: &u32, b:&u32| {
+        let valid = |a: &u32, b: &u32| {
             let invalid = (*b, *a);
             if rules.contains(&&invalid) {
                 std::cmp::Ordering::Greater
@@ -71,14 +73,12 @@ impl Puzzle {
             .map(|b| booklet_middle_page(&b))
             .sum()
     }
-
 }
 
 fn booklet_middle_page(booklet: &[u32]) -> u32 {
     let index = booklet.len() / 2;
     booklet[index]
 }
-
 
 mod input {
     use nom::bytes::complete::tag;
@@ -102,7 +102,6 @@ mod input {
     }
 
     impl Puzzle {
-
         pub fn new_test() -> Self {
             Self::parse(TEST_INPUT).unwrap().1
         }
@@ -113,14 +112,15 @@ mod input {
 
         pub fn parse(input: &str) -> IResult<&str, Self> {
             let (input, order_rules) = many1(terminated(parse_page_order, line_ending))(input)?;
-            let (input, booklets) = many1(
-                terminated(
-                    separated_list1(tag(","), parse_u32),
-                    multispace0
-                )
-            )(input.trim_start())?;
-            
-            Ok((input, Self { order_rules, booklets }))
+            let (input, booklets) = many1(terminated(
+                separated_list1(tag(","), parse_u32),
+                multispace0,
+            ))(input.trim_start())?;
+
+            Ok((input, Self {
+                order_rules,
+                booklets,
+            }))
         }
     }
 }
@@ -154,20 +154,14 @@ mod tests {
     #[test]
     fn test_reorder() {
         let pz = Puzzle::new_test();
-        let b = [75,97,47,61,53];
-        assert_eq!(
-            pz.reorder_booklet(&b),
-            vec![97,75,47,61,53]
-        );
+        let b = [75, 97, 47, 61, 53];
+        assert_eq!(pz.reorder_booklet(&b), vec![97, 75, 47, 61, 53]);
 
-        let b = [61,13,29];
-        assert_eq!(
-            pz.reorder_booklet(&b),
-            vec![61,29,13]
-        );
+        let b = [61, 13, 29];
+        assert_eq!(pz.reorder_booklet(&b), vec![61, 29, 13]);
 
-        let b = [97,13,75,29,47];
-        assert_eq!(pz.reorder_booklet(&b), vec![97,75,47,29,13]);
+        let b = [97, 13, 75, 29, 47];
+        assert_eq!(pz.reorder_booklet(&b), vec![97, 75, 47, 29, 13]);
     }
 
     #[test]
