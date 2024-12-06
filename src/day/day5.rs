@@ -63,7 +63,8 @@ impl Puzzle {
         };
 
         let mut booklet = Vec::from(booklet);
-        booklet.sort_by(valid);
+        //booklet.sort_by(valid);
+        booklet.sort_unstable_by(valid);
         booklet
     }
 
