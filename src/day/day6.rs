@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use rayon::prelude::*;
 
 use super::grid::*;
 
@@ -78,7 +79,7 @@ impl Puzzle {
         candidates: impl Iterator<Item = GridIdx>,
     ) -> impl Iterator<Item = GridIdx> {
         candidates.filter(|idx| {
-            println!("indx: {:?}", idx);
+            //println!("indx: {:?}", idx);
             if self.grid.get(*idx) != Some(&Cell::Open) {
                 return false;
             }
@@ -102,6 +103,24 @@ impl Puzzle {
         let mut visited = HashSet::new();
         self.walk(self.start, GridOffset(-1, 0), &mut visited);
         self.filter_cycles(visited.into_iter()).count()
+    }
+
+    // 1.5 seconds
+    pub fn part2_parallel(&self) -> usize {
+        let mut visited = HashSet::new();
+        self.walk(self.start, GridOffset(-1, 0), &mut visited);
+        visited.into_par_iter().filter(|idx| {
+            if self.grid.get(*idx) != Some(&Cell::Open) {
+                return false;
+            }
+
+            let mut case = self.clone();
+            if !case.grid.put(*idx, Cell::Obstruction) {
+                return false;
+            }
+
+            case.has_cycles()
+        }).count()
     }
 }
 
@@ -187,5 +206,15 @@ mod test {
 
         let pz = Puzzle::new();
         assert_eq!(pz.part2_only_visited(), 2022);
+    }
+
+    //#[ignore]
+    #[test]
+    fn test_part2_parallel() {
+        let pz = Puzzle::new_test();
+        assert_eq!(pz.part2_parallel(), 6);
+
+        let pz = Puzzle::new();
+        assert_eq!(pz.part2_parallel(), 2022);
     }
 }
