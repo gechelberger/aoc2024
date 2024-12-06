@@ -1,4 +1,6 @@
 use std::collections::HashSet;
+
+use itertools::Itertools;
 use rayon::prelude::*;
 
 use super::grid::*;
@@ -78,19 +80,7 @@ impl Puzzle {
         &self,
         candidates: impl Iterator<Item = GridIdx>,
     ) -> impl Iterator<Item = GridIdx> {
-        candidates.filter(|idx| {
-            //println!("indx: {:?}", idx);
-            if self.grid.get(*idx) != Some(&Cell::Open) {
-                return false;
-            }
-
-            let mut case = self.clone();
-            if !case.grid.put(*idx, Cell::Obstruction) {
-                return false;
-            }
-
-            case.has_cycles()
-        })
+        candidates.filter(|idx| self.introduces_cycle(*idx))
     }
 
     // 12 seconds
@@ -105,22 +95,59 @@ impl Puzzle {
         self.filter_cycles(visited.into_iter()).count()
     }
 
-    // 1.5 seconds
+    // 1.5 seconds (0.090 --release)
     pub fn part2_parallel(&self) -> usize {
         let mut visited = HashSet::new();
         self.walk(self.start, GridOffset(-1, 0), &mut visited);
-        visited.into_par_iter().filter(|idx| {
-            if self.grid.get(*idx) != Some(&Cell::Open) {
-                return false;
-            }
+        visited
+            .into_par_iter()
+            .filter(|idx| self.introduces_cycle(*idx))
+            .count()
+    }
 
-            let mut case = self.clone();
-            if !case.grid.put(*idx, Cell::Obstruction) {
-                return false;
-            }
+    fn introduces_cycle(&self, idx: GridIdx) -> bool {
+        if self.grid.get(idx) != Some(&Cell::Open) {
+            return false;
+        }
 
-            case.has_cycles()
-        }).count()
+        let mut case = self.clone();
+        if !case.grid.put(idx, Cell::Obstruction) {
+            return false;
+        }
+
+        case.has_cycles()
+    }
+
+    pub fn part2_parallel2(&self) -> usize {
+        use std::thread;
+        let mut visited = HashSet::new();
+        self.walk(self.start, GridOffset(-1, 0), &mut visited);
+
+        let n = num_cpus::get();
+        let chunk_size = visited.len() / n;
+        println!("{n} threads of {chunk_size}");
+
+        let chunked = visited
+            .into_iter()
+            .chunks(chunk_size)
+            .into_iter()
+            .map(|x| x.collect::<Vec<_>>())
+            .collect::<Vec<Vec<_>>>();
+
+        let jhs: Vec<_> = chunked
+            .into_iter()
+            .map(|chunk| {
+                let inst = self.clone();
+                thread::spawn(move || {
+                    chunk
+                        .into_iter()
+                        .filter(|idx| inst.introduces_cycle(*idx))
+                        .count()
+                })
+            })
+            .collect();
+
+        jhs.into_iter().map(|h| h.join().unwrap()).sum()
     }
 }
 
@@ -216,5 +243,15 @@ mod test {
 
         let pz = Puzzle::new();
         assert_eq!(pz.part2_parallel(), 2022);
+    }
+
+    #[ignore]
+    #[test]
+    fn test_part2_parallel2() {
+        let pz = Puzzle::new_test();
+        assert_eq!(pz.part2_parallel2(), 6);
+
+        let pz = Puzzle::new();
+        assert_eq!(pz.part2_parallel2(), 2022);
     }
 }
