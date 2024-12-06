@@ -48,7 +48,12 @@ impl Puzzle {
         visited.len()
     }
 
-    pub fn has_cycles(&self, start: GridIdx, dir: GridOffset, path: &mut HashSet<Turn>) -> bool {
+    pub fn has_cycles(&self) -> bool {
+        let mut path = HashSet::new();
+        self.inner_has_cycles(self.start, GridOffset(-1, 0), &mut path)
+    }
+
+    fn inner_has_cycles(&self, start: GridIdx, dir: GridOffset, path: &mut HashSet<Turn>) -> bool {
         let turn = (start, dir);
         if path.contains(&turn) {
             return true; // we've already hit this cell moving in this direction so must be in a cycle.
@@ -59,7 +64,7 @@ impl Puzzle {
         let mut location = start;
         for (idx, cell) in self.grid.iter_from_with_stride(start, dir) {
             if cell == &Cell::Obstruction {
-                return self.has_cycles(location, rotate_right(dir), path);
+                return self.inner_has_cycles(location, rotate_right(dir), path);
             } else {
                 location = idx;
             }
@@ -67,20 +72,36 @@ impl Puzzle {
         false
     }
 
-    pub fn part2_brute_force(&self) -> usize {
-        let dir = GridOffset(-1, 0);
-        let mut count = 0;
-        for i in 0..self.grid.cells.len() {
-            if self.grid.cells[i] == Cell::Open {
-                let mut case = self.clone();
-                case.grid.cells[i] = Cell::Obstruction;
-                let mut path = HashSet::new();
-                if case.has_cycles(self.start, dir, &mut path) {
-                    count += 1;
-                }
+    // filter locations where a new obstruction would cause a cycle
+    pub fn filter_cycles(
+        &self,
+        candidates: impl Iterator<Item = GridIdx>,
+    ) -> impl Iterator<Item = GridIdx> {
+        candidates.filter(|idx| {
+            println!("indx: {:?}", idx);
+            if self.grid.get(*idx) != Some(&Cell::Open) {
+                return false;
             }
-        }
-        count
+
+            let mut case = self.clone();
+            if !case.grid.put(*idx, Cell::Obstruction) {
+                return false;
+            }
+
+            case.has_cycles()
+        })
+    }
+
+    // 12 seconds
+    pub fn part2_brute_force(&self) -> usize {
+        self.filter_cycles(self.grid.indices()).count()
+    }
+
+    // 3 seconds
+    pub fn part2_only_visited(&self) -> usize {
+        let mut visited = HashSet::new();
+        self.walk(self.start, GridOffset(-1, 0), &mut visited);
+        self.filter_cycles(visited.into_iter()).count()
     }
 }
 
@@ -156,5 +177,15 @@ mod test {
 
         let pz = Puzzle::new();
         assert_eq!(pz.part2_brute_force(), 2022);
+    }
+
+    #[ignore]
+    #[test]
+    fn test_part2_limited() {
+        let pz = Puzzle::new_test();
+        assert_eq!(pz.part2_only_visited(), 6);
+
+        let pz = Puzzle::new();
+        assert_eq!(pz.part2_only_visited(), 2022);
     }
 }

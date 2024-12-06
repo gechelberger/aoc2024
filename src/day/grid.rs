@@ -1,6 +1,8 @@
 use core::ops::{Add, Mul, Sub};
 use std::path::Iter;
 
+use itertools::Itertools;
+
 pub enum Horz {
     Left,
     Right,
@@ -125,14 +127,39 @@ impl<T> Grid<T> {
         (self.rows, self.cols)
     }
 
-    pub fn get(&self, index: GridIdx) -> Option<&T> {
-        let rows = 0..self.rows as isize;
-        let cols = 0..self.cols as isize;
-        if rows.contains(&index.0) && cols.contains(&index.1) {
-            let idx = index.row_maj_idx(self.cols);
-            self.cells.get(idx)
+    fn flat_index(&self, index: GridIdx) -> Option<usize> {
+        let rows = 0..self.rows;
+        let cols = 0..self.cols;
+        if rows.contains(&index.row()) && cols.contains(&index.col()) {
+            Some(index.row() * self.cols + index.col())
         } else {
             None
+        }
+    }
+
+    fn grid_idx(&self, index: usize) -> Option<GridIdx> {
+        let range = 0..self.cells.len();
+        if range.contains(&index) {
+            let index = index as isize;
+            let cols = self.cols as isize;
+            let grid_idx = GridIdx(index / cols, index % cols);
+            Some(grid_idx)
+        } else {
+            None
+        }
+    }
+
+    pub fn get(&self, index: GridIdx) -> Option<&T> {
+        self.cells.get(self.flat_index(index)?)
+    }
+
+    pub fn put(&mut self, index: GridIdx, cell: T) -> bool {
+        match self.flat_index(index) {
+            Some(index) => {
+                self.cells[index] = cell;
+                true
+            }
+            None => false,
         }
     }
 
@@ -162,6 +189,12 @@ impl<T> Grid<T> {
             state: start,
             stride,
         }
+    }
+
+    pub fn indices(&self) -> impl Iterator<Item = GridIdx> {
+        (0..self.rows as isize)
+            .cartesian_product(0..self.cols as isize)
+            .map(|(r, c)| GridIdx(r, c))
     }
 }
 
