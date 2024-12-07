@@ -5,7 +5,7 @@ pub struct Equation {
 }
 
 impl Equation {
-    pub fn balances(&self) -> bool {
+    pub fn balances(&self, operators: &[BinOp]) -> bool {
         let (head, tail) = match self.operands.as_slice().split_first() {
             Some(res) => res,
             None => return false,
@@ -27,11 +27,33 @@ impl Equation {
             }
 
             let (rhs, tail) = tail.split_first().unwrap();
-            stack.push((lhs + rhs, tail));
-            stack.push((lhs * rhs, tail));
+            for op in operators {
+                stack.push((op.eval(lhs, *rhs), tail));
+            }
         }
 
         false
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum BinOp {
+    Add,
+    Mul,
+    Concat,
+}
+
+impl BinOp {
+    pub fn eval(self, lhs: u64, rhs: u64) -> u64 {
+        match self {
+            Self::Add => lhs + rhs,
+            Self::Mul => lhs * rhs,
+            Self::Concat => {
+                let mut concat = lhs.to_string();
+                concat.push_str(rhs.to_string().as_str());
+                str::parse::<u64>(concat.as_str()).unwrap()
+            }
+        }
     }
 }
 
@@ -39,9 +61,19 @@ pub struct Puzzle(Vec<Equation>);
 
 impl Puzzle {
     pub fn part1(&self) -> u64 {
+        const OPS: [BinOp; 2] = [BinOp::Add, BinOp::Mul];
         self.0
             .iter()
-            .filter(|eq| eq.balances())
+            .filter(|eq| eq.balances(&OPS))
+            .map(|eq| eq.test_value)
+            .sum()
+    }
+
+    pub fn part2(&self) -> u64 {
+        const OPS: [BinOp; 3] = [BinOp::Add, BinOp::Mul, BinOp::Concat];
+        self.0
+            .iter()
+            .filter(|eq| eq.balances(&OPS))
             .map(|eq| eq.test_value)
             .sum()
     }
@@ -113,19 +145,19 @@ mod tests {
             test_value: 190,
             operands: vec![10, 19],
         };
-        assert_eq!(eq.balances(), true);
+        assert_eq!(eq.balances(&[BinOp::Add, BinOp::Mul]), true);
 
         let eq = Equation {
             test_value: 3267,
             operands: vec![81, 40, 27],
         };
-        assert_eq!(eq.balances(), true);
+        assert_eq!(eq.balances(&[BinOp::Add, BinOp::Mul]), true);
 
         let eq = Equation {
             test_value: 83,
             operands: vec![17, 5],
         };
-        assert_eq!(eq.balances(), false);
+        assert_eq!(eq.balances(&[BinOp::Add, BinOp::Mul]), false);
     }
 
     #[test]
@@ -135,5 +167,14 @@ mod tests {
 
         let pz = Puzzle::new();
         assert_eq!(pz.part1(), 7710205485870);
+    }
+
+    #[test]
+    fn test_part2() {
+        let pz = Puzzle::new_test();
+        assert_eq!(pz.part2(), 11387);
+
+        let pz = Puzzle::new();
+        assert_eq!(pz.part2(), 20928985450275);
     }
 }
