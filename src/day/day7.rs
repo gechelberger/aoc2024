@@ -113,6 +113,7 @@ impl BinOp {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Puzzle(Vec<Equation>);
 
 impl Puzzle {

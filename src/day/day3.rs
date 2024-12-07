@@ -18,11 +18,11 @@ impl Instruction {
 pub struct Puzzle(Vec<Instruction>);
 
 impl Puzzle {
-    fn solve_pt1(&self) -> i64 {
+    pub fn part1(&self) -> i64 {
         self.0.iter().map(Instruction::exec).sum()
     }
 
-    fn solve_pt2(&self) -> i64 {
+    pub fn part2(&self) -> i64 {
         struct State(bool, i64);
 
         impl State {
@@ -138,18 +138,18 @@ mod tests {
     #[test]
     fn test_part1() {
         let pz = Puzzle::new_test();
-        assert_eq!(pz.solve_pt1(), 161);
+        assert_eq!(pz.part1(), 161);
 
         let pz = Puzzle::new();
-        assert_eq!(pz.solve_pt1(), 196826776);
+        assert_eq!(pz.part1(), 196826776);
     }
 
     #[test]
     fn test_part2() {
         let pz = Puzzle::new_test_pt2();
-        assert_eq!(pz.solve_pt2(), 48);
+        assert_eq!(pz.part2(), 48);
 
         let pz = Puzzle::new();
-        assert_eq!(pz.solve_pt2(), 106780429);
+        assert_eq!(pz.part2(), 106780429);
     }
 }

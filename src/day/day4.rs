@@ -6,6 +6,7 @@ use crate::grid::*;
 const TEST_INPUT: &'static str = include_str!("../../puzzles/day4_test.txt");
 const INPUT: &'static str = include_str!("../../puzzles/day4.txt");
 
+#[derive(Debug, Clone)]
 pub struct Puzzle(Grid<char>);
 
 impl Puzzle {
@@ -22,9 +23,11 @@ impl Puzzle {
         const CASE1: [Option<char>; 2] = [Some('M'), Some('S')];
         const CASE2: [Option<char>; 2] = [Some('S'), Some('M')];
 
+        use rayon::prelude::*;
+
         self.0
             .cells
-            .iter()
+            .par_iter()
             .positions(|c| c == &MATCH_START)
             .map(|idx| self.0.grid_idx(idx).unwrap())
             .filter(|rc| {

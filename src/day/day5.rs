@@ -4,7 +4,8 @@ use std::ops::Not;
 type PageOrder = (u32, u32);
 type Booklet = Vec<u32>;
 
-struct Puzzle {
+#[derive(Debug, Clone)]
+pub struct Puzzle {
     order_rules: Vec<PageOrder>,
     booklets: Vec<Booklet>,
 }
@@ -70,6 +71,17 @@ impl Puzzle {
 
     pub fn part2(&self) -> u32 {
         self.invalid_booklets()
+            .map(|b| self.reorder_booklet(b))
+            .map(|b| booklet_middle_page(&b))
+            .sum()
+    }
+
+    pub fn part2_parallel(&self) -> u32 {
+        use rayon::prelude::*;
+        self.booklets
+            .par_iter()
+            .map(|b| b.as_ref())
+            .filter(|b| !self.check_booklet(b))
             .map(|b| self.reorder_booklet(b))
             .map(|b| booklet_middle_page(&b))
             .sum()

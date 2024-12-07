@@ -21,7 +21,7 @@ fn rotate_right(offset: GridOffset) -> GridOffset {
 type Turn = (GridIdx, GridOffset);
 
 #[derive(Debug, Clone)]
-struct Puzzle {
+pub struct Puzzle {
     grid: Grid<Cell>,
     start: GridIdx,
 }
