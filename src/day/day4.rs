@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use strum::IntoEnumIterator;
 
 use crate::grid::*;
 
@@ -39,22 +40,18 @@ impl Puzzle {
     }
 
     pub fn find_all(&self, needle: &str) -> impl Iterator<Item = isize> {
-        let match_start = needle.chars().next().unwrap();
+        let match_start = needle.chars().next().expect("needle should not be empty");
 
         self.0
             .cells
             .iter()
             .positions(move |c| c == &match_start)
-            .map(|idx| self.0.grid_idx(idx).unwrap())
-            .map(|rc| {
-                self.counting_search(needle, rc, GridOffset(-1, -1))
-                    + self.counting_search(needle, rc, GridOffset(-1, 0))
-                    + self.counting_search(needle, rc, GridOffset(-1, 1))
-                    + self.counting_search(needle, rc, GridOffset(0, -1))
-                    + self.counting_search(needle, rc, GridOffset(0, 1))
-                    + self.counting_search(needle, rc, GridOffset(1, -1))
-                    + self.counting_search(needle, rc, GridOffset(1, 0))
-                    + self.counting_search(needle, rc, GridOffset(1, 1))
+            .map(|idx| {
+                let rc = self.0.grid_idx(idx).unwrap();
+                Adjacent::iter()
+                    .map(GridOffset::from)
+                    .map(|dir| self.counting_search(needle, rc, dir))
+                    .sum()
             })
     }
 
@@ -62,8 +59,8 @@ impl Puzzle {
         if needle.is_empty() {
             return 1; // needle exhausted/found
         }
-        let (match_char, needle) = split_first_char(needle);
 
+        let (match_char, needle) = split_first_char(needle);
         if match_char == self.0.get(rc).copied() {
             self.counting_search(needle, rc + dir, dir)
         } else {

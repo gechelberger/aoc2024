@@ -1,23 +1,39 @@
 use core::ops::{Add, Mul, Sub};
-use std::path::Iter;
 
 use itertools::Itertools;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Horz {
     Left,
     Right,
 }
+
+impl From<Horz> for GridOffset {
+    fn from(value: Horz) -> Self {
+        match value {
+            Horz::Left => GridOffset(0, -1),
+            Horz::Right => GridOffset(0, 1),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Vert {
     Up,
     Down,
 }
-pub enum Orthogonal {
-    H(Horz),
-    V(Vert),
+
+impl From<Vert> for GridOffset {
+    fn from(value: Vert) -> Self {
+        match value {
+            Vert::Up => GridOffset(-1, 0),
+            Vert::Down => GridOffset(1, 0),
+        }
+    }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum GridAdj {
+#[derive(Debug, Copy, Clone, PartialEq, strum::EnumIter)]
+pub enum Adjacent {
     UL,
     U,
     UR,
@@ -26,6 +42,21 @@ pub enum GridAdj {
     DL,
     D,
     DR,
+}
+
+impl From<Adjacent> for GridOffset {
+    fn from(value: Adjacent) -> Self {
+        match value {
+            Adjacent::UL => Self::from(Vert::Up) + Self::from(Horz::Left),
+            Adjacent::U => Self::from(Vert::Up),
+            Adjacent::UR => Self::from(Vert::Up) + Self::from(Horz::Right),
+            Adjacent::L => Self::from(Horz::Left),
+            Adjacent::R => Self::from(Horz::Right),
+            Adjacent::DL => Self::from(Vert::Down) + Self::from(Horz::Left),
+            Adjacent::D => Self::from(Vert::Down),
+            Adjacent::DR => Self::from(Vert::Down) + Self::from(Horz::Right),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
