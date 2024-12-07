@@ -1,87 +1,39 @@
-use std::collections::HashSet;
-
 use itertools::Itertools;
 
-struct Grid {
-    chars: Vec<char>,
-    width: isize,
-    height: isize,
-}
+use crate::grid::*;
 
 const TEST_INPUT: &'static str = include_str!("../../puzzles/day4_test.txt");
 const INPUT: &'static str = include_str!("../../puzzles/day4.txt");
 
-type RC = [isize; 2]; // [Row, Col]
+pub struct Puzzle(Grid<char>);
 
-impl Grid {
+impl Puzzle {
     pub fn new() -> Self {
-        Self::parse(INPUT)
+        Self(parse_char_grid(INPUT))
     }
 
     pub fn new_test() -> Self {
-        Self::parse(TEST_INPUT)
-    }
-
-    pub fn parse(input: &str) -> Self {
-        let mut lines = input.lines().map(str::trim);
-        let mut chars: Vec<_> = lines.next().unwrap().chars().collect();
-        let width = chars.len() as isize;
-        for line in lines {
-            chars.extend(line.chars());
-        }
-
-        let height = chars.len() as isize / width;
-        Self {
-            chars,
-            width,
-            height,
-        }
-    }
-
-    pub fn get(&self, rc: RC) -> Option<char> {
-        let rows = 0..self.height;
-        let cols = 0..self.width;
-
-        if rows.contains(&rc[0]) && cols.contains(&rc[1]) {
-            self.chars.get(self.rc_to_idx(rc) as usize).copied()
-        } else {
-            None
-        }
-    }
-
-    fn rc_to_idx(&self, rc: RC) -> isize {
-        let index: isize = rc[0] * self.width as isize + rc[1];
-        index as isize
-    }
-
-    fn idx_to_rc(&self, index: isize) -> RC {
-        [index / self.width, index % self.width]
+        Self(parse_char_grid(TEST_INPUT))
     }
 
     pub fn part2(&self) -> usize {
-        let match_start = 'A';
-        let diag_goal = HashSet::<Option<char>>::from([Some('M'), Some('A'), Some('S')]);
-        let init = HashSet::<Option<char>>::from([Some('A')]);
+        const MATCH_START: char = 'A';
+        const CASE1: [Option<char>; 2] = [Some('M'), Some('S')];
+        const CASE2: [Option<char>; 2] = [Some('S'), Some('M')];
 
-        let start_sites: Vec<_> = self
-            .chars
+        self.0
+            .cells
             .iter()
-            .positions(|c| c == &match_start)
-            .map(|idx| self.idx_to_rc(idx as isize))
-            .collect();
-
-        start_sites
-            .into_iter()
+            .positions(|c| c == &MATCH_START)
+            .map(|idx| self.0.grid_idx(idx).unwrap())
             .filter(|rc| {
-                let mut diag1 = init.clone();
-                diag1.insert(self.get([rc[0] - 1, rc[1] - 1]));
-                diag1.insert(self.get([rc[0] + 1, rc[1] + 1]));
+                const D1: GridOffset = GridOffset(1, 1);
+                let diag1 = [self.0.get(*rc - D1).copied(), self.0.get(*rc + D1).copied()];
 
-                let mut diag2 = init.clone();
-                diag2.insert(self.get([rc[0] - 1, rc[1] + 1]));
-                diag2.insert(self.get([rc[0] + 1, rc[1] - 1]));
+                const D2: GridOffset = GridOffset(-1, 1);
+                let diag2 = [self.0.get(*rc - D2).copied(), self.0.get(*rc + D2).copied()];
 
-                diag1 == diag_goal && diag2 == diag_goal
+                (diag1 == CASE1 || diag1 == CASE2) && (diag2 == CASE1 || diag2 == CASE2)
             })
             .count()
     }
@@ -89,35 +41,31 @@ impl Grid {
     pub fn find_all(&self, needle: &str) -> impl Iterator<Item = isize> {
         let match_start = needle.chars().next().unwrap();
 
-        let start_sites: Vec<_> = self
-            .chars
+        self.0
+            .cells
             .iter()
-            .positions(|c| c == &match_start)
-            .map(|idx| self.idx_to_rc(idx as isize))
-            .collect();
-
-        start_sites.into_iter().map(|rc| {
-            let count = self.counting_search(needle, rc, [-1, -1])
-                + self.counting_search(needle, rc, [-1, 0])
-                + self.counting_search(needle, rc, [-1, 1])
-                + self.counting_search(needle, rc, [0, -1])
-                + self.counting_search(needle, rc, [0, 1])
-                + self.counting_search(needle, rc, [1, -1])
-                + self.counting_search(needle, rc, [1, 0])
-                + self.counting_search(needle, rc, [1, 1]);
-            count
-        })
+            .positions(move |c| c == &match_start)
+            .map(|idx| self.0.grid_idx(idx).unwrap())
+            .map(|rc| {
+                self.counting_search(needle, rc, GridOffset(-1, -1))
+                    + self.counting_search(needle, rc, GridOffset(-1, 0))
+                    + self.counting_search(needle, rc, GridOffset(-1, 1))
+                    + self.counting_search(needle, rc, GridOffset(0, -1))
+                    + self.counting_search(needle, rc, GridOffset(0, 1))
+                    + self.counting_search(needle, rc, GridOffset(1, -1))
+                    + self.counting_search(needle, rc, GridOffset(1, 0))
+                    + self.counting_search(needle, rc, GridOffset(1, 1))
+            })
     }
 
-    fn counting_search(&self, needle: &str, rc: RC, dir: RC) -> isize {
+    fn counting_search(&self, needle: &str, rc: GridIdx, dir: GridOffset) -> isize {
         if needle.is_empty() {
             return 1; // needle exhausted/found
         }
         let (match_char, needle) = split_first_char(needle);
 
-        if match_char == self.get(rc) {
-            let rc = [rc[0] + dir[0], rc[1] + dir[1]];
-            self.counting_search(needle, rc, dir)
+        if match_char == self.0.get(rc).copied() {
+            self.counting_search(needle, rc + dir, dir)
         } else {
             0
         }
@@ -139,19 +87,19 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let pz = Grid::new_test();
+        let pz = Puzzle::new_test();
         assert_eq!(pz.part1(), 18);
 
-        let pz = Grid::new();
+        let pz = Puzzle::new();
         assert_eq!(pz.part1(), 2532);
     }
 
     #[test]
     fn test_part2() {
-        let pz = Grid::new_test();
+        let pz = Puzzle::new_test();
         assert_eq!(pz.part2(), 9);
 
-        let pz = Grid::new();
+        let pz = Puzzle::new();
         assert_eq!(pz.part2(), 1941);
     }
 }

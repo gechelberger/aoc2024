@@ -52,10 +52,6 @@ impl GridIdx {
     fn col(self) -> usize {
         self.1 as usize
     }
-
-    fn row_maj_idx(self, cols: usize) -> usize {
-        self.row() * cols + self.col()
-    }
 }
 
 impl Add for GridOffset {
@@ -98,6 +94,10 @@ impl Mul<isize> for GridOffset {
     }
 }
 
+pub fn parse_char_grid(input: &str) -> Grid<char> {
+    Grid::<char>::parse(input, |x| x)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Grid<T> {
     pub cells: Vec<T>,
@@ -106,10 +106,6 @@ pub struct Grid<T> {
 }
 
 impl<T> Grid<T> {
-    pub fn parse_chars(input: &str) -> Grid<char> {
-        Grid::<char>::parse(input, |x| x)
-    }
-
     pub fn parse(input: &str, sym: impl Fn(char) -> T) -> Self {
         let mut lines = input.lines().map(str::trim).filter(|x| !x.is_empty());
         let mut cells: Vec<_> = lines.next().unwrap().chars().collect();
@@ -127,7 +123,7 @@ impl<T> Grid<T> {
         (self.rows, self.cols)
     }
 
-    fn flat_index(&self, index: GridIdx) -> Option<usize> {
+    pub fn flat_index(&self, index: GridIdx) -> Option<usize> {
         let rows = 0..self.rows;
         let cols = 0..self.cols;
         if rows.contains(&index.row()) && cols.contains(&index.col()) {
@@ -137,7 +133,7 @@ impl<T> Grid<T> {
         }
     }
 
-    fn grid_idx(&self, index: usize) -> Option<GridIdx> {
+    pub fn grid_idx(&self, index: usize) -> Option<GridIdx> {
         let range = 0..self.cells.len();
         if range.contains(&index) {
             let index = index as isize;
@@ -164,15 +160,7 @@ impl<T> Grid<T> {
     }
 
     pub fn position(&self, pred: impl Fn(&T) -> bool) -> Option<GridIdx> {
-        let flat_index = self.cells.iter().position(pred)?;
-        let row = flat_index / self.cols;
-        let col = flat_index % self.cols;
-        if row < self.rows {
-            let idx = GridIdx(row as isize, col as isize);
-            Some(idx)
-        } else {
-            None
-        }
+        self.grid_idx(self.cells.iter().position(pred)?)
     }
 
     pub fn column(&self, col: usize) -> GridLane<'_, T> {

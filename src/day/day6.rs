@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 use rayon::prelude::*;
 
-use super::grid::*;
+use crate::grid::*;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Cell {
