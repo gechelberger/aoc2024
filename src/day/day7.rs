@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Equation {
     test_value: u64,
@@ -48,12 +50,32 @@ impl BinOp {
         match self {
             Self::Add => lhs + rhs,
             Self::Mul => lhs * rhs,
-            Self::Concat => {
-                let mut concat = lhs.to_string();
-                concat.push_str(rhs.to_string().as_str());
-                str::parse::<u64>(concat.as_str()).unwrap()
-            }
+            // Self::Concat => Self::string_concat(lhs, rhs),
+            //Self::Concat => Self::recursive_concat(lhs, rhs),
+            Self::Concat => Self::accum_concat(lhs, rhs),
         }
+    }
+
+    fn string_concat(lhs: u64, rhs: u64) -> u64 {
+        let mut concat = lhs.to_string();
+        concat.push_str(rhs.to_string().as_str());
+        str::parse::<u64>(concat.as_str()).unwrap()
+    }
+
+    fn recursive_concat(mut lhs: u64, rhs: u64) -> u64 {
+        if rhs > 0 {
+            lhs = Self::recursive_concat(lhs * 10, rhs / 10);
+        }
+        return lhs - rhs / 10 + rhs;
+    }
+
+    fn accum_concat(mut lhs: u64, rhs: u64) -> u64 {
+        let mut shift = rhs;
+        while shift > 0 {
+            shift = shift / 10;
+            lhs = lhs * 10;
+        }
+        lhs + rhs
     }
 }
 
