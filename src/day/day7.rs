@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use itertools::Itertools;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,6 +18,10 @@ impl Equation {
         let init = (*head, tail);
         let mut stack = Vec::from([init]);
         while let Some((lhs, tail)) = stack.pop() {
+            if lhs > self.test_value {
+                continue;
+            }
+
             if tail.is_empty() {
                 if lhs == self.test_value {
                     return true;
@@ -24,14 +30,42 @@ impl Equation {
                 }
             }
 
-            if lhs > self.test_value {
-                continue;
-            }
-
             let (rhs, tail) = tail.split_first().unwrap();
             for op in operators {
                 stack.push((op.eval(lhs, *rhs), tail));
             }
+        }
+
+        false
+    }
+
+    pub fn balances_part2_copying(&self) -> bool {
+        let mut operands = VecDeque::from(self.operands.clone());
+        let head = match operands.pop_front() {
+            Some(head) => head,
+            None => return false,
+        };
+
+        let mut stack = Vec::new();
+        stack.push((head, operands));
+
+        while let Some((lhs, mut tail)) = stack.pop() {
+            if lhs > self.test_value {
+                continue;
+            }
+
+            if tail.is_empty() {
+                if lhs == self.test_value {
+                    return true;
+                } else {
+                    continue;
+                }
+            }
+
+            let rhs = tail.pop_front().unwrap();
+            stack.push((BinOp::Add.eval(lhs, rhs), tail.clone()));
+            stack.push((BinOp::Mul.eval(lhs, rhs), tail.clone()));
+            stack.push((BinOp::Concat.eval(lhs, rhs), tail));
         }
 
         false
@@ -96,6 +130,25 @@ impl Puzzle {
         self.0
             .iter()
             .filter(|eq| eq.balances(&OPS))
+            .map(|eq| eq.test_value)
+            .sum()
+    }
+
+    pub fn part2_parallel(&self) -> u64 {
+        use rayon::prelude::*;
+        const OPS: [BinOp; 3] = [BinOp::Add, BinOp::Mul, BinOp::Concat];
+        self.0
+            .par_iter()
+            .filter(|eq| eq.balances(&OPS))
+            .map(|eq| eq.test_value)
+            .sum()
+    }
+
+    pub fn part2_copying(&self) -> u64 {
+        use rayon::prelude::*;
+        self.0
+            .par_iter()
+            .filter(|eq| eq.balances_part2_copying())
             .map(|eq| eq.test_value)
             .sum()
     }
@@ -191,6 +244,7 @@ mod tests {
         assert_eq!(pz.part1(), 7710205485870);
     }
 
+    #[ignore]
     #[test]
     fn test_part2() {
         let pz = Puzzle::new_test();
@@ -198,5 +252,25 @@ mod tests {
 
         let pz = Puzzle::new();
         assert_eq!(pz.part2(), 20928985450275);
+    }
+
+    //#[ignore]
+    #[test]
+    fn test_part2_parallel() {
+        let pz = Puzzle::new_test();
+        assert_eq!(pz.part2_parallel(), 11387);
+
+        let pz = Puzzle::new();
+        assert_eq!(pz.part2_parallel(), 20928985450275);
+    }
+
+    #[ignore]
+    #[test]
+    fn test_part2_parallel_copy() {
+        let pz = Puzzle::new_test();
+        assert_eq!(pz.part2_copying(), 11387);
+
+        let pz = Puzzle::new();
+        assert_eq!(pz.part2_copying(), 20928985450275);
     }
 }
