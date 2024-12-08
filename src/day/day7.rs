@@ -1,7 +1,3 @@
-use std::collections::VecDeque;
-
-use itertools::Itertools;
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Equation {
     test_value: u64,
@@ -9,7 +5,8 @@ pub struct Equation {
 }
 
 impl Equation {
-    pub fn balances(&self, operators: &[BinOp]) -> bool {
+    #[inline(always)]
+    pub fn balances1(&self) -> bool {
         let (head, tail) = match self.operands.as_slice().split_first() {
             Some(res) => res,
             None => return false,
@@ -31,25 +28,23 @@ impl Equation {
             }
 
             let (rhs, tail) = tail.split_first().unwrap();
-            for op in operators {
-                stack.push((op.eval(lhs, *rhs), tail));
-            }
+            stack.push((BinOp::Add.eval(lhs, *rhs), tail));
+            stack.push((BinOp::Mul.eval(lhs, *rhs), tail));
         }
 
         false
     }
 
-    pub fn balances_part2_copying(&self) -> bool {
-        let mut operands = VecDeque::from(self.operands.clone());
-        let head = match operands.pop_front() {
-            Some(head) => head,
+    #[inline(always)]
+    pub fn balances2(&self) -> bool {
+        let (head, tail) = match self.operands.as_slice().split_first() {
+            Some(res) => res,
             None => return false,
         };
 
-        let mut stack = Vec::new();
-        stack.push((head, operands));
-
-        while let Some((lhs, mut tail)) = stack.pop() {
+        let init = (*head, tail);
+        let mut stack = Vec::from([init]);
+        while let Some((lhs, tail)) = stack.pop() {
             if lhs > self.test_value {
                 continue;
             }
@@ -62,10 +57,10 @@ impl Equation {
                 }
             }
 
-            let rhs = tail.pop_front().unwrap();
-            stack.push((BinOp::Add.eval(lhs, rhs), tail.clone()));
-            stack.push((BinOp::Mul.eval(lhs, rhs), tail.clone()));
-            stack.push((BinOp::Concat.eval(lhs, rhs), tail));
+            let (rhs, tail) = tail.split_first().unwrap();
+            stack.push((BinOp::Add.eval(lhs, *rhs), tail));
+            stack.push((BinOp::Mul.eval(lhs, *rhs), tail));
+            stack.push((BinOp::Concat.eval(lhs, *rhs), tail));
         }
 
         false
@@ -80,29 +75,16 @@ enum BinOp {
 }
 
 impl BinOp {
+    #[inline(always)]
     pub fn eval(self, lhs: u64, rhs: u64) -> u64 {
         match self {
             Self::Add => lhs + rhs,
             Self::Mul => lhs * rhs,
-            // Self::Concat => Self::string_concat(lhs, rhs),
-            //Self::Concat => Self::recursive_concat(lhs, rhs),
             Self::Concat => Self::accum_concat(lhs, rhs),
         }
     }
 
-    fn string_concat(lhs: u64, rhs: u64) -> u64 {
-        let mut concat = lhs.to_string();
-        concat.push_str(rhs.to_string().as_str());
-        str::parse::<u64>(concat.as_str()).unwrap()
-    }
-
-    fn recursive_concat(mut lhs: u64, rhs: u64) -> u64 {
-        if rhs > 0 {
-            lhs = Self::recursive_concat(lhs * 10, rhs / 10);
-        }
-        return lhs - rhs / 10 + rhs;
-    }
-
+    #[inline(always)]
     fn accum_concat(mut lhs: u64, rhs: u64) -> u64 {
         let mut shift = rhs;
         while shift > 0 {
@@ -118,38 +100,27 @@ pub struct Puzzle(Vec<Equation>);
 
 impl Puzzle {
     pub fn part1(&self) -> u64 {
-        const OPS: [BinOp; 2] = [BinOp::Add, BinOp::Mul];
+        use rayon::prelude::*;
         self.0
-            .iter()
-            .filter(|eq| eq.balances(&OPS))
+            .par_iter()
+            .filter(|eq| eq.balances1())
             .map(|eq| eq.test_value)
             .sum()
     }
 
     pub fn part2(&self) -> u64 {
-        const OPS: [BinOp; 3] = [BinOp::Add, BinOp::Mul, BinOp::Concat];
         self.0
             .iter()
-            .filter(|eq| eq.balances(&OPS))
+            .filter(|eq| eq.balances2())
             .map(|eq| eq.test_value)
             .sum()
     }
 
     pub fn part2_parallel(&self) -> u64 {
         use rayon::prelude::*;
-        const OPS: [BinOp; 3] = [BinOp::Add, BinOp::Mul, BinOp::Concat];
         self.0
             .par_iter()
-            .filter(|eq| eq.balances(&OPS))
-            .map(|eq| eq.test_value)
-            .sum()
-    }
-
-    pub fn part2_copying(&self) -> u64 {
-        use rayon::prelude::*;
-        self.0
-            .par_iter()
-            .filter(|eq| eq.balances_part2_copying())
+            .filter(|eq| eq.balances2())
             .map(|eq| eq.test_value)
             .sum()
     }
@@ -161,7 +132,7 @@ mod input {
     use nom::character::complete::{multispace0, space1};
     use nom::combinator::map;
     use nom::multi::{many1, separated_list1};
-    use nom::sequence::{separated_pair, terminated};
+    use nom::sequence::terminated;
 
     use super::*;
 
@@ -221,19 +192,19 @@ mod tests {
             test_value: 190,
             operands: vec![10, 19],
         };
-        assert_eq!(eq.balances(&[BinOp::Add, BinOp::Mul]), true);
+        assert_eq!(eq.balances1(), true);
 
         let eq = Equation {
             test_value: 3267,
             operands: vec![81, 40, 27],
         };
-        assert_eq!(eq.balances(&[BinOp::Add, BinOp::Mul]), true);
+        assert_eq!(eq.balances1(), true);
 
         let eq = Equation {
             test_value: 83,
             operands: vec![17, 5],
         };
-        assert_eq!(eq.balances(&[BinOp::Add, BinOp::Mul]), false);
+        assert_eq!(eq.balances1(), false);
     }
 
     #[test]
@@ -263,15 +234,5 @@ mod tests {
 
         let pz = Puzzle::new();
         assert_eq!(pz.part2_parallel(), 20928985450275);
-    }
-
-    #[ignore]
-    #[test]
-    fn test_part2_parallel_copy() {
-        let pz = Puzzle::new_test();
-        assert_eq!(pz.part2_copying(), 11387);
-
-        let pz = Puzzle::new();
-        assert_eq!(pz.part2_copying(), 20928985450275);
     }
 }

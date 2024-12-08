@@ -73,14 +73,18 @@ impl GridOffset {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct GridIdx(isize, isize);
+pub struct GridIdx(pub isize, pub isize);
 
 impl GridIdx {
-    fn row(self) -> usize {
+    pub fn new(row: usize, col: usize) -> Self {
+        Self(row as isize, col as isize)
+    }
+
+    pub fn row(self) -> usize {
         self.0 as usize
     }
 
-    fn col(self) -> usize {
+    pub fn col(self) -> usize {
         self.1 as usize
     }
 }
